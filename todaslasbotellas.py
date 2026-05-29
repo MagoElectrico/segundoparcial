@@ -1,99 +1,94 @@
-import os
 import cv2
 import numpy as np
-import pandas as pd
 import tensorflow as tf
-from tensorflow.keras import layers, models
-import matplotlib.pyplot as plt
 
 # ==============================================================================
-# 1. CARGAR EL DATASET (SOLO IMÁGENES Y CLASES)
+# 1. CONFIGURACIÓN INICIAL Y CARGA DEL MODELO
 # ==============================================================================
-csv_maestro = pd.read_csv('dataset_completo.csv')
+# El orden numérico estricto debe coincidir con tu entrenamiento con MobileNetV2
+nombres_clases = ['Coca Cola', 'Fanta', 'Pepsi', 'Salvietti']
 
-class_map = {
-    'fanta2': 0, 'salvietti': 1,
-    'pepsi': 2, 
-    'cocacola': 3
-}
+# CONFIANZA MÍNIMA: Si el modelo está menos de 75% seguro, dirá que no hay nada
+UMBRAL_CONFIANZA = 0.75  
 
-X_images = []
-Y_classes = []
-RUTA_IMAGENES = "todas_las_imagenes/"
+print("Cargando el modelo optimizado para tiempo real...")
+model = tf.keras.models.load_model('detector_gaseosas_cnn.h5')
 
-print("Cargando imágenes para Clasificación...")
-for index, row in csv_maestro.iterrows():
-    img_path = os.path.join(RUTA_IMAGENES, row['filename'])
-    img = cv2.imread(img_path)
+# Inicializar la cámara web (0 es el ID por defecto de la cámara integrada)
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    raise IOError("No se pudo abrir la cámara web. Verifica los permisos de tu sistema.")
+
+print("\n=== ¡CÁMARA INICIADA! ===")
+print("Coloca una botella frente a la cámara.")
+print("Presiona la tecla 'q' para cerrar la ventana.")
+print("==========================\n")
+
+# ==============================================================================
+# 2. BUCLE PRINCIPAL DE CAPTURA EN VIVO
+# ==============================================================================
+while True:
+    # Capturar fotograma por fotograma
+    ret, frame = cap.read()
+    if not ret or frame is None:
+        continue
+
+    # Duplicar el fotograma para procesarlo sin arruinar la imagen que se muestra
+    img_analisis = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
-    if img is not None:
-        img_resizada = cv2.resize(img, (150, 150)) # 150x150 es ideal para clasificación estándar
-        X_images.append(img_resizada)
-        
-        clase_str = str(row['class']).lower().strip().replace(" ", "").replace("_", "").replace("-", "")
-        Y_classes.append(class_map.get(clase_str, 3)) # Si no la encuentra, por defecto Coca-Cola
-
-X_images = np.array(X_images, dtype='float32') / 255.0  # Normalizamos los píxeles directamente aquí
-Y_classes = tf.keras.utils.to_categorical(np.array(Y_classes), num_classes=4)
-
-print(f"Dataset cargado: {X_images.shape[0]} imágenes listas.")
-
-# ==============================================================================
-# 2. MODELO CNN DE CLASIFICACIÓN (La respuesta a: Which is the model architecture?)
-# ==============================================================================
-model = models.Sequential([
-    # Entrada de la Red
-    layers.Input(shape=(150, 150, 3)),
+    # Redimensionar al tamaño que espera la red (160x160 para MobileNetV2)
+    img_resizada = cv2.resize(img_analisis, (160, 160))
     
-    # Bloque 1
-    layers.Conv2D(32, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
+    # Normalizar los píxeles y expandir dimensiones para crear el batch (1, 160, 160, 3)
+    img_input = np.array(img_resizada, dtype='float32') / 255.0
+    img_input = np.expand_dims(img_input, axis=0)
+
+    # ==============================================================================
+    # 3. PREDICCIÓN (INFERENCIA) EN TIEMPO REAL
+    # ==============================================================================
+    predicciones = model.predict(img_input, verbose=0)[0]
+    indice_ganador = np.argmax(predicciones)
+    probabilidad_ganadora = predicciones[indice_ganador]
+    clase_predicha = nombres_clases[indice_ganador]
+
+    # ==============================================================================
+    # 4. FILTRO DE UMBRAL Y DIBUJAR LOS RESULTADOS
+    # ==============================================================================
+    # Si la seguridad de la predicción supera nuestro umbral, muestra la marca
+    if probabilidad_ganadora >= UMBRAL_CONFIANZA:
+        texto_pantalla = f"{clase_predicha}: {probabilidad_ganadora * 100:.1f}%"
+        color = (0, 255, 0) # Verde para acierto seguro
+    else:
+        # Si está por debajo del umbral, ignoramos las suposiciones locas del modelo
+        texto_pantalla = "No hay nada"
+        color = (200, 200, 200) # Gris claro para estado vacío
+
+    # Pintar un rectángulo de fondo para que el texto sea legible
+    cv2.rectangle(frame, (10, 20), (450, 70), (0, 0, 0), -1)
     
-    # Bloque 2
-    layers.Conv2D(64, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
-    
-    # Bloque 3
-    layers.Conv2D(128, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
-    
-    # Capas Densas de Clasificación
-    layers.Flatten(),
-    layers.Dense(128, activation='relu'),
-    layers.Dropout(0.5), # Regularización para evitar sobreajuste
-    layers.Dense(4, activation='softmax') # 4 salidas (Coca, Fanta, Pepsi, Salvieti)
-])
+    # Escribir el resultado sobre el fotograma en vivo
+    cv2.putText(
+        frame, 
+        texto_pantalla, 
+        (20, 55), 
+        cv2.FONT_HERSHEY_SIMPLEX, 
+        1.1, 
+        color, 
+        3, 
+        cv2.LINE_AA
+    )
 
-model.compile(
-    optimizer='adam',
-    loss='categorical_crossentropy',
-    metrics=['accuracy']
-)
+    # Mostrar la ventana con el video y el texto superpuesto
+    cv2.imshow('Detector de Sodas en Vivo', frame)
+
+    # Escuchar el teclado. Si presionas 'q', el bucle se rompe y se cierra la cámara
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
 # ==============================================================================
-# 3. ENTRENAMIENTO (Generates train and test results)
+# 5. LIBERAR RECURSOS
 # ==============================================================================
-print("\nEntrenando la CNN para superar el 88%...")
-history = model.fit(
-    X_images, Y_classes,
-    epochs=25,
-    batch_size=32,
-    validation_split=0.2 # Divide automáticamente en datos de entrenamiento y test/validación
-)
-
-# ==============================================================================
-# 4. RENDIMIENTO Y GRÁFICAS DEL ACCURACY
-# ==============================================================================
-plt.figure(figsize=(8, 5))
-plt.plot(history.history['accuracy'], label='Train Accuracy', color='blue')
-plt.plot(history.history['val_accuracy'], label='Test/Val Accuracy', color='orange')
-plt.axhline(y=0.88, color='r', linestyle='--', label='Meta Requerida (88%)')
-plt.title('Precisión del Modelo (Accuracy)')
-plt.xlabel('Épocas')
-plt.ylabel('Accuracy')
-plt.legend()
-plt.grid(True)
-plt.show()
-
-final_acc = history.history['val_accuracy'][-1] * 100
-print(f"\n¡Listo! Accuracy final logrado en pruebas: {final_acc:.2f}%")
+cap.release()
+cv2.destroyAllWindows()
+print("Cámara cerrada correctamente. ¡Prueba terminada!")
