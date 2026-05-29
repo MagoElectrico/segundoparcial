@@ -47,7 +47,7 @@ while True:
     clase_predicha = nombres_clases[indice_ganador]
 
     # Evaluación principal de botellas
-    if probabilidad_ganadora >= UBRAL_CONFIANZA and clase_predicha in ['Coca Cola', 'Salvietti']:
+    if probabilidad_ganadora >= UMBRAL_CONFIANZA and clase_predicha in ['Coca Cola', 'Salvietti']:
         # Si hay una botella válida en pantalla, reiniciamos el cronómetro del motor
         tiempo_inicio_vacio = None
         motor_activo = False
@@ -71,7 +71,7 @@ while True:
         if tiempo_transcurrido_vacio >= 3.0:
             motor_activo = True
             estado_actual = 'M'  # 'M' le ordena a la TIVA encender el motor al 50% PWM
-            texto_pantalla = f"SIN SODA > 3s! -> MOTOR 50% -> UART: M"
+            texto_pantalla = f"SIN SODA, MOTOR 50% -> UART: M"
             color = (0, 165, 255)  # Naranja de advertencia
         else:
             # Sigue en el periodo de gracia antes de los 3 segundos (Lógica normal 'X')
@@ -90,7 +90,7 @@ while True:
     # Dibujar la interfaz en pantalla
     cv2.rectangle(frame, (10, 20), (580, 70), (0, 0, 0), -1)
     cv2.putText(frame, texto_pantalla, (20, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2, cv2.LINE_AA)
-    cv2.imshow('Raspberry Pi to TIVA - UART Out', frame)
+    cv2.imshow('Raspberry Pi to TIVA', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
