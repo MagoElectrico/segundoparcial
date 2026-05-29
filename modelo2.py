@@ -74,7 +74,7 @@ while True:
     cv2.putText(frame, texto_pantalla, (20, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2, cv2.LINE_AA)
     cv2.putText(frame, texto_reloj, (400, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2, cv2.LINE_AA)
     
-    cv2.imshow('Laboratorio UCB - Contador Estadistico por Tiempo', frame)
+    cv2.imshow('Contador Estadistico por Tiempo', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         print("\n Inspección cancelada por el usuario.")
