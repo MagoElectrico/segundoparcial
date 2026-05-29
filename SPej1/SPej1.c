@@ -43,18 +43,18 @@ void ConfigurarSistema(void) {
           !SysCtlPeripheralReady(SYSCTL_PERIPH_PWM0)) {
     }
 
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_3);
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_3, 0x00);
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, 0x0A);
+    GPIOPinWrite(GPIO_PORTF_BASE, 0x0A, 0x00);
 
     GPIOPinConfigure(GPIO_PC4_U7RX);
     GPIOPinConfigure(GPIO_PC5_U7TX);
-    GPIOPinTypeUART(GPIO_PORTC_BASE, GPIO_PIN_4 | GPIO_PIN_5);
+    GPIOPinTypeUART(GPIO_PORTC_BASE, 0x30);
     UARTConfigSetExpClk(UART7_BASE, frecuencia_reloj, 9600,(UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
     IntEnable(INT_UART7);
     UARTIntEnable(UART7_BASE, UART_INT_RX | UART_INT_RT);
 
     GPIOPinConfigure(GPIO_PF2_M0PWM2);
-    GPIOPinTypePWM(GPIO_PORTF_BASE, GPIO_PIN_2);
+    GPIOPinTypePWM(GPIO_PORTF_BASE, 0x04);
     PWMGenConfigure(PWM0_BASE, PWM_GEN_1, PWM_GEN_MODE_DOWN | PWM_GEN_MODE_NO_SYNC);
     PWMGenPeriodSet(PWM0_BASE, PWM_GEN_1, 120000); 
     
@@ -93,20 +93,20 @@ void UART7_Handler(void) {
 
         if (estado_actual == 'C') {
             ultima_soda = 'C';      
-            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 1); // 1 = Apagado total
+            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 1);
             ActualizarPeriodoTimer(1);                 
         } 
         else if (estado_actual == 'S') {
             ultima_soda = 'S';      
-            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 1); // 1 = Apagado total
+            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 1);
             ActualizarPeriodoTimer(1);                 
         } 
         else if (estado_actual == 'X') {
-            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 1); // 1 = Apagado total
+            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 1);
             ActualizarPeriodoTimer(3);                 
         }
         else if (estado_actual == 'M') {
-            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 60000); // 60000 = 50% Encendido
+            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_2, 60000);
             ActualizarPeriodoTimer(3);                     
         }
     }
@@ -115,15 +115,15 @@ void UART7_Handler(void) {
 void Timer0A_Handler(void) {
     TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
 
-    uint32_t led_estado_actual = GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_3);
+    uint32_t led_estado_actual = GPIOPinRead(GPIO_PORTF_BASE, 0x0A);
 
     if (ultima_soda == 'C') {
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x00); 
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, led_estado_actual ^ GPIO_PIN_1);
+        GPIOPinWrite(GPIO_PORTF_BASE, 0x08, 0x00); 
+        GPIOPinWrite(GPIO_PORTF_BASE, 0x02, led_estado_actual ^ GPIO_PIN_1);
     } 
     else if (ultima_soda == 'S') {
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x00); 
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, led_estado_actual ^ GPIO_PIN_3);
+        GPIOPinWrite(GPIO_PORTF_BASE, 0x02, 0x00); 
+        GPIOPinWrite(GPIO_PORTF_BASE, 0x08, led_estado_actual ^ GPIO_PIN_3);
     } 
 }
 
@@ -131,6 +131,6 @@ void ActualizarPeriodoTimer(uint32_t segundos) {
     periodo_actual = segundos;
     TimerDisable(TIMER0_BASE, TIMER_A);
     TimerLoadSet(TIMER0_BASE, TIMER_A, (frecuencia_reloj * periodo_actual) - 1);
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1 | GPIO_PIN_3, 0x00);
+    GPIOPinWrite(GPIO_PORTF_BASE, 0x0A, 0x00);
     TimerEnable(TIMER0_BASE, TIMER_A);
 }
