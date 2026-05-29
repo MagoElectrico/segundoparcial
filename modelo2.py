@@ -5,14 +5,13 @@ import time
 import matplotlib.pyplot as plt
 import RPi.GPIO as GPIO  
 
-# 1. CONFIGURACIÓN DE PINES GPIO
 PIN_BOTON = 17 
 
 GPIO.setmode(GPIO.BCM)
 
 GPIO.setup(PIN_BOTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# 2. CONFIGURACIÓN DEL MODELO IA
+# 2. CONFIGURACIÓN DEL MODELO 
 nombres_clases = ['Coca Cola', 'Fanta', 'Pepsi', 'Salvietti']
 UMBRAL_CONFIANZA = 0.75  
 
@@ -32,20 +31,16 @@ if not cap.isOpened():
 
 print("\n=========================================")
 print("¡SISTEMA ESTADÍSTICO CON PARADA DE EMERGENCIA!")
-print("Conecta tu botón al GPIO 17 de la Raspberry Pi.")
 print("=========================================\n")
 
-# Control de tiempos y estados
 tiempo_inicio = time.time()
 DURACION_INSPECCION = 60.0  
 ultimo_tiempo_conteo = 0  
 INTERVALO_CONTEO = 2.0    
 
-# Variables de estado para el Botón de Emergencia
 sistema_pausado = False
 ultimo_estado_boton = 1  
 
-# 3. BUCLE PRINCIPAL DE CAPTURA
 while True:
     lectura_boton = GPIO.input(PIN_BOTON)
     
@@ -62,7 +57,7 @@ while True:
         
     ultimo_estado_boton = lectura_boton
 
-    #  CASO A: EL SISTEMA ESTÁ EN PAUSA DE EMERGENCIA 
+    # SISTEMA ESTÁ EN PAUSA DE EMERGENCIA 
     if sistema_pausado:
         ret, frame = cap.read()
         if not ret or frame is None:
@@ -71,7 +66,7 @@ while True:
       
         tiempo_inicio += (time.time() - (tiempo_inicio + (DURACION_INSPECCION - (DURACION_INSPECCION - (time.time() - tiempo_inicio)))))
         
-        # Interfaz visual de Advertencia de Emergencia
+     
         cv2.rectangle(frame, (10, 10), (620, 80), (0, 0, 255), -1)
         cv2.putText(frame, " PARADA DE EMERGENCIA ", (30, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 3, cv2.LINE_AA)
         cv2.putText(frame, "Conteo congelado y a salvo", (160, 73), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
@@ -82,7 +77,7 @@ while True:
             break
         continue 
 
-    #  CASO B: EL SISTEMA TRABAJA NORMALMENTE 
+    # SISTEMA TRABAJA NORMALMENTE 
     tiempo_actual = time.time()
     tiempo_transcurrido = tiempo_actual - tiempo_inicio
     tiempo_restante = DURACION_INSPECCION - tiempo_transcurrido
@@ -132,7 +127,7 @@ cap.release()
 cv2.destroyAllWindows()
 GPIO.cleanup()  
 
-# 4. GENERAR ARCHIVO DE TEXTO (.TXT) Y GRÁFICA
+#GENERAR ARCHIVO DE TEXTO Y GRÁFICA
 ruta_txt = "reporte_conteo.txt"
 with open(ruta_txt, "w") as archivo:
     archivo.write("=========================================\n")
